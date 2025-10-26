@@ -5,9 +5,13 @@
  * Performs comprehensive security analysis and implements best practices
  */
 
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 class SecurityAuditor {
     constructor() {
@@ -72,7 +76,7 @@ class SecurityAuditor {
     async auditDependencies() {
         console.log('📦 Auditing dependencies...');
 
-        const packageJson = require(path.join(this.projectRoot, 'package.json'));
+        const packageJson = JSON.parse(fs.readFileSync(path.join(this.projectRoot, 'package.json'), 'utf8'));
 
         // Check for vulnerable dependencies
         const vulnerableDeps = [
@@ -179,7 +183,7 @@ class SecurityAuditor {
         // Check TypeScript configuration
         const tsConfigPath = path.join(this.projectRoot, 'tsconfig.json');
         if (fs.existsSync(tsConfigPath)) {
-            const tsConfig = require(tsConfigPath);
+            const tsConfig = JSON.parse(fs.readFileSync(tsConfigPath, 'utf8'));
 
             if (!tsConfig.compilerOptions?.strict) {
                 this.recommendations.push({
@@ -195,25 +199,28 @@ class SecurityAuditor {
         console.log('🌐 Auditing network security...');
 
         // Check for open ports and services
-        const mcpServers = fs.readdirSync('mcp-servers').filter(f => f.endsWith('.py') || f.endsWith('.js'));
+        const mcpServersDir = path.join(this.projectRoot, 'mcp-servers');
+        if (fs.existsSync(mcpServersDir)) {
+            const mcpServers = fs.readdirSync(mcpServersDir).filter(f => f.endsWith('.py') || f.endsWith('.js'));
 
-        for (const server of mcpServers) {
-            const content = fs.readFileSync(path.join('mcp-servers', server), 'utf8');
+            for (const server of mcpServers) {
+                const content = fs.readFileSync(path.join(mcpServersDir, server), 'utf8');
 
-            if (content.includes('localhost') || content.includes('127.0.0.1')) {
-                this.recommendations.push({
-                    category: 'Network Security',
-                    recommendation: `MCP server ${server} uses localhost binding`,
-                    action: 'Consider binding to specific interface in production'
-                });
-            }
+                if (content.includes('localhost') || content.includes('127.0.0.1')) {
+                    this.recommendations.push({
+                        category: 'Network Security',
+                        recommendation: `MCP server ${server} uses localhost binding`,
+                        action: 'Consider binding to specific interface in production'
+                    });
+                }
 
-            if (content.includes('port') && content.includes('3000')) {
-                this.recommendations.push({
-                    category: 'Port Security',
-                    recommendation: 'Use non-standard ports for MCP services',
-                    action: 'Change default MCP port to > 1024'
-                });
+                if (content.includes('port') && content.includes('3000')) {
+                    this.recommendations.push({
+                        category: 'Port Security',
+                        recommendation: 'Use non-standard ports for MCP services',
+                        action: 'Change default MCP port to > 1024'
+                    });
+                }
             }
         }
     }
@@ -223,29 +230,31 @@ class SecurityAuditor {
 
         // Check for sensitive data logging
         const aiFiles = [
-            'frontend/app/aipanel/agent-coordinator.ts',
-            'frontend/app/aipanel/mcp-integration.ts'
+            path.join(this.projectRoot, 'frontend/app/aipanel/agent-coordinator.ts'),
+            path.join(this.projectRoot, 'frontend/app/aipanel/mcp-integration.ts')
         ];
 
         for (const file of aiFiles) {
-            const content = fs.readFileSync(file, 'utf8');
+            if (fs.existsSync(file)) {
+                const content = fs.readFileSync(file, 'utf8');
 
-            if (content.includes('console.log') && (content.includes('API') || content.includes('key') || content.includes('token'))) {
-                this.issues.push({
-                    type: 'MEDIUM',
-                    category: 'Data Logging',
-                    issue: `Potential sensitive data logging in ${file}`,
-                    fix: 'Remove or sanitize console.log statements'
-                });
-            }
+                if (content.includes('console.log') && (content.includes('API') || content.includes('key') || content.includes('token'))) {
+                    this.issues.push({
+                        type: 'MEDIUM',
+                        category: 'Data Logging',
+                        issue: `Potential sensitive data logging in ${path.basename(file)}`,
+                        fix: 'Remove or sanitize console.log statements'
+                    });
+                }
 
-            // Check for proper error handling
-            if (!content.includes('try') || !content.includes('catch')) {
-                this.recommendations.push({
-                    category: 'Error Handling',
-                    recommendation: `Add proper error handling to ${file}`,
-                    action: 'Implement try-catch blocks'
-                });
+                // Check for proper error handling
+                if (!content.includes('try') || !content.includes('catch')) {
+                    this.recommendations.push({
+                        category: 'Error Handling',
+                        recommendation: `Add proper error handling to ${path.basename(file)}`,
+                        action: 'Implement try-catch blocks'
+                    });
+                }
             }
         }
     }
@@ -254,32 +263,35 @@ class SecurityAuditor {
         console.log('🤖 Auditing AI components...');
 
         // Check AI agent security
-        const agentCoordinator = fs.readFileSync('frontend/app/aipanel/agent-coordinator.ts', 'utf8');
+        const agentCoordinatorPath = path.join(this.projectRoot, 'frontend/app/aipanel/agent-coordinator.ts');
+        if (fs.existsSync(agentCoordinatorPath)) {
+            const agentCoordinator = fs.readFileSync(agentCoordinatorPath, 'utf8');
 
-        if (!agentCoordinator.includes('sanitize') && !agentCoordinator.includes('validate')) {
-            this.recommendations.push({
-                category: 'AI Security',
-                recommendation: 'Add input validation for AI agent requests',
-                action: 'Implement request sanitization'
-            });
-        }
+            if (!agentCoordinator.includes('sanitize') && !agentCoordinator.includes('validate')) {
+                this.recommendations.push({
+                    category: 'AI Security',
+                    recommendation: 'Add input validation for AI agent requests',
+                    action: 'Implement request sanitization'
+                });
+            }
 
-        // Check rate limiting
-        if (!agentCoordinator.includes('rate') && !agentCoordinator.includes('limit')) {
-            this.recommendations.push({
-                category: 'Rate Limiting',
-                recommendation: 'Implement rate limiting for AI requests',
-                action: 'Add rate limiting middleware'
-            });
-        }
+            // Check rate limiting
+            if (!agentCoordinator.includes('rate') && !agentCoordinator.includes('limit')) {
+                this.recommendations.push({
+                    category: 'Rate Limiting',
+                    recommendation: 'Implement rate limiting for AI requests',
+                    action: 'Add rate limiting middleware'
+                });
+            }
 
-        // Check context isolation
-        if (!agentCoordinator.includes('isolation') && !agentCoordinator.includes('sandbox')) {
-            this.recommendations.push({
-                category: 'Context Security',
-                recommendation: 'Ensure proper context isolation between agents',
-                action: 'Implement agent context sandboxing'
-            });
+            // Check context isolation
+            if (!agentCoordinator.includes('isolation') && !agentCoordinator.includes('sandbox')) {
+                this.recommendations.push({
+                    category: 'Context Security',
+                    recommendation: 'Ensure proper context isolation between agents',
+                    action: 'Implement agent context sandboxing'
+                });
+            }
         }
     }
 
@@ -455,6 +467,7 @@ export const aiRateLimit = rateLimit({
 package validation
 
 import (
+    "fmt"
     "regexp"
     "strings"
     "unicode"
@@ -462,7 +475,7 @@ import (
 
 var (
     // Allowed command characters
-    allowedCommandRegex = regexp.MustCompile(\`^[a-zA-Z0-9\\\\s\\\\-_.\\\\/~:]+$\\`)
+    allowedCommandRegex = regexp.MustCompile("^[a-zA-Z0-9\\\\s\\\\-_.\\\\/~:]+$")
 
     // Dangerous commands to block
     blockedCommands = []string{
@@ -632,6 +645,6 @@ async function main() {
     }
 }
 
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
     main();
 }
