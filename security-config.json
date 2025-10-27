@@ -2,25 +2,86 @@
   "rateLimiting": {
     "maxRequestsPerMinute": 100,
     "maxRequestsPerHour": 1000,
-    "maxConcurrentRequests": 10
+    "maxConcurrentRequests": 10,
+    "blockDurationMinutes": 15
   },
   "inputValidation": {
     "maxCommandLength": 1000,
-    "allowedCharacters": {},
+    "maxFilePathLength": 500,
+    "maxSearchQueryLength": 200,
+    "allowedCharacters": {
+      "commands": "^[a-zA-Z0-9\\s\\-_./\\|@#$%^&()+=\\[\\]{}:;\"',<>?\\\\]+$",
+      "filePaths": "^[a-zA-Z0-9\\s\\-_./]+$",
+      "searchQueries": "^[a-zA-Z0-9\\s\\-_.*]+$"
+    },
     "blockedCommands": [
       "rm -rf /",
       "sudo rm -rf /*",
-      "dd if=/dev/zero"
+      "dd if=/dev/zero",
+      "eval",
+      "exec",
+      "source",
+      "chmod 777",
+      "chown",
+      "mount -o remount",
+      "systemctl",
+      "service",
+      "iptables",
+      "ufw",
+      "ssh",
+      "nc",
+      "netcat",
+      "kill -9",
+      "killall",
+      "pkill",
+      "apt",
+      "yum",
+      "brew",
+      "pip",
+      "npm",
+      "node"
+    ],
+    "blockedFileExtensions": [
+      ".exe",
+      ".bat",
+      ".cmd",
+      ".scr",
+      ".pif",
+      ".com",
+      ".jar",
+      ".deb",
+      ".rpm",
+      ".dmg",
+      ".pkg"
     ]
   },
   "securityHeaders": {
     "X-Content-Type-Options": "nosniff",
     "X-Frame-Options": "DENY",
-    "X-XSS-Protection": "1; mode=block"
+    "X-XSS-Protection": "1; mode=block",
+    "Strict-Transport-Security": "max-age=31536000; includeSubDomains"
+  },
+  "cors": {
+    "allowedOrigins": [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "http://127.0.0.1:5173",
+      "http://127.0.0.1:3000"
+    ],
+    "allowedMethods": ["GET", "POST", "OPTIONS"],
+    "allowedHeaders": ["Content-Type", "X-Requested-With"]
   },
   "logging": {
     "level": "info",
     "maxLogSize": "10MB",
-    "retentionDays": 30
+    "retentionDays": 30,
+    "auditAllCommands": true,
+    "logSuspiciousActivity": true
+  },
+  "mcp": {
+    "maxExecutionTime": 30000,
+    "maxMemoryUsage": "100MB",
+    "enableSandboxing": true,
+    "requireAuthentication": false
   }
 }

@@ -1,7 +1,8 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import { AIAgent, AgentType, AgentStatus, AgentContext, AgentMessage, MessageType } from "./aitypes";
+import { AIAgent, AgentType, AgentStatus, AgentContext, AgentMessage } from "./aitypes";
+import { mcpService, MCPTool } from "./mcp-integration";
 import * as jotai from "jotai";
 
 export class AgentCoordinator {
@@ -389,13 +390,67 @@ export class AgentCoordinator {
     }
 
     private async processMCPIntegration(agent: AIAgent, message: AgentMessage): Promise<AgentMessage | null> {
-        // MCP integration logic
+        try {
+            const action: string = message.payload?.action ?? "status";
+
+            if (action === "list-tools") {
+                const tools = await mcpService.discoverAvailableTools();
+
+                return this.createMCPResponse(agent.id, message, {
+                    status: "connected",
+                    tools: this.serializeTools(tools),
+                    connections: mcpService.getConnectionStatus()
+                });
+            }
+
+            if (action === "execute-tool") {
+                const toolId = message.payload?.toolId;
+                const params = message.payload?.parameters ?? {};
+
+                if (!toolId) {
+                    throw new Error("Tool ID is required for execution");
+                }
+
+                const result = await mcpService.executeTool(toolId, params, message.context);
+
+                return this.createMCPResponse(agent.id, message, {
+                    status: "executed",
+                    toolId,
+                    result
+                });
+            }
+
+            return this.createMCPResponse(agent.id, message, {
+                status: "ready",
+                connections: mcpService.getConnectionStatus()
+            });
+        } catch (error) {
+            return this.createMCPResponse(agent.id, message, {
+                status: "error",
+                message: error instanceof Error ? error.message : String(error)
+            });
+        }
+    }
+
+    private serializeTools(tools: MCPTool[]): Array<Record<string, unknown>> {
+        return tools.map(tool => ({
+            id: tool.id,
+            name: tool.name,
+            description: tool.description,
+            capabilities: tool.capabilities,
+            status: tool.status,
+            lastUsed: tool.lastUsed,
+            usageCount: tool.usageCount
+        }));
+    }
+
+    private createMCPResponse(agentId: string, message: AgentMessage, payload: Record<string, unknown>): AgentMessage {
         return {
             id: `mcp-${Date.now()}`,
-            from: agent.id,
+            from: agentId,
             to: message.from,
             type: "coordination_response",
-            payload: { status: "connected", tools: [] },
+            payload,
             timestamp: Date.now(),
             priority: message.priority,
             context: message.context
@@ -447,6 +502,10 @@ export class AgentCoordinator {
 
     getAgents(): AIAgent[] {
         return Array.from(this.agents.values());
+    }
+
+    getAllAgents(): AIAgent[] {
+        return this.getAgents();
     }
 
     updateAgentContext(agentId: string, context: Partial<AgentContext>) {
@@ -508,6 +567,14 @@ export class AgentCoordinator {
         };
 
         await this.sendMessage(message);
+    }
+
+    async getMCPTools(): Promise<MCPTool[]> {
+        return mcpService.discoverAvailableTools();
+    }
+
+    async executeMCPTool(toolId: string, parameters: Record<string, any>, context: AgentContext) {
+        return mcpService.executeTool(toolId, parameters, context);
     }
 }
 

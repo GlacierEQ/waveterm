@@ -1,13 +1,11 @@
 // Copyright 2025, Command Line Inc.
 // SPDX-License-Identifier: Apache-2.0
 
-import tailwindcss from "@tailwindcss/vite";
-import react from "@vitejs/plugin-react-swc";
 import { defineConfig } from "electron-vite";
-import { ViteImageOptimizer } from "vite-plugin-image-optimizer";
-import { viteStaticCopy } from "vite-plugin-static-copy";
-import svgr from "vite-plugin-svgr";
-import tsconfigPaths from "vite-tsconfig-paths";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 
 // from our electron build
 const CHROME = "chrome140";
@@ -73,7 +71,24 @@ function whoImportsTarget(target: string) {
     };
 }
 
-export default defineConfig({
+export default defineConfig(async () => {
+    const [
+        { default: tailwindcss },
+        { default: react },
+        { ViteImageOptimizer },
+        { viteStaticCopy },
+        { default: svgr },
+        { default: tsconfigPaths },
+    ] = await Promise.all([
+        import("@tailwindcss/vite"),
+        import("@vitejs/plugin-react-swc"),
+        import("vite-plugin-image-optimizer"),
+        import("vite-plugin-static-copy"),
+        import("vite-plugin-svgr"),
+        import("vite-tsconfig-paths"),
+    ]);
+
+    return {
     main: {
         root: ".",
         build: {
@@ -150,6 +165,12 @@ export default defineConfig({
         optimizeDeps: {
             include: ["monaco-yaml/yaml.worker.js"],
         },
+        resolve: {
+            alias: [
+                { find: "@", replacement: path.resolve(projectRoot, "frontend") },
+                { find: /^@\//, replacement: `${path.resolve(projectRoot, "frontend")}/` },
+            ],
+        },
         server: {
             open: false,
             watch: {
@@ -177,4 +198,5 @@ export default defineConfig({
             }),
         ],
     },
+    };
 });

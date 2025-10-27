@@ -31,25 +31,46 @@ export class MCPIntegrationService {
     // Default MCP servers to connect to
     private defaultServers = [
         {
-            id: "wave-terminal-mcp",
+            id: "memory-mcp",
             server: "localhost",
             port: 3000,
-            name: "Wave Terminal MCP Server",
-            tools: ["terminal", "file_system", "process_management", "ai_chat"]
+            name: "Memory MCP Server",
+            tools: ["memory_management", "context_storage", "ai_memory"]
         },
         {
-            id: "claude-mcp",
+            id: "filesystem-mcp",
             server: "localhost",
             port: 3001,
-            name: "Claude MCP Server",
-            tools: ["ai_assistance", "code_analysis", "documentation"]
+            name: "Filesystem MCP Server",
+            tools: ["file_operations", "directory_browsing", "file_search"]
         },
         {
-            id: "codex-mcp",
+            id: "terminal-mcp",
             server: "localhost",
             port: 3002,
-            name: "Codex MCP Server",
-            tools: ["code_execution", "debugging", "testing"]
+            name: "Terminal MCP Server",
+            tools: ["command_execution", "process_management", "system_info"]
+        },
+        {
+            id: "kubectl-mcp",
+            server: "localhost",
+            port: 3003,
+            name: "Kubectl MCP Server",
+            tools: ["cluster_management", "pod_operations", "deployment_management", "service_operations", "logs", "describe"]
+        },
+        {
+            id: "helm-mcp",
+            server: "localhost",
+            port: 3004,
+            name: "Helm MCP Server",
+            tools: ["chart_management", "release_management", "package_operations", "template_generation"]
+        },
+        {
+            id: "minikube-mcp",
+            server: "localhost",
+            port: 3005,
+            name: "Minikube MCP Server",
+            tools: ["local_cluster", "development_environment", "service_tunneling", "addon_management"]
         }
     ];
 
@@ -124,19 +145,106 @@ export class MCPIntegrationService {
         // For now, return mock tools based on server configuration
         const mockTools: MCPTool[] = [];
 
-        for (const toolName of connection.server === "localhost" ? ["terminal", "file_system", "ai_chat"] : ["ai_assistance", "code_analysis"]) {
+        for (const toolName of connection.tools) {
+            let endpoint = `http://${connection.server}:${connection.port}`;
+
+            // Set appropriate endpoint based on tool type
+            switch (toolName) {
+                case "memory_management":
+                case "context_storage":
+                case "ai_memory":
+                    endpoint += "/memory";
+                    break;
+                case "file_operations":
+                case "directory_browsing":
+                case "file_search":
+                    endpoint += "/files";
+                    break;
+                case "command_execution":
+                case "process_management":
+                case "system_info":
+                    endpoint += "/commands";
+                    break;
+                case "cluster_management":
+                case "pod_operations":
+                case "deployment_management":
+                case "service_operations":
+                case "logs":
+                case "describe":
+                    endpoint += "/" + toolName.replace("_", "/");
+                    break;
+                case "chart_management":
+                case "release_management":
+                case "package_operations":
+                case "template_generation":
+                    endpoint += "/" + toolName.replace("_", "/");
+                    break;
+                case "local_cluster":
+                case "development_environment":
+                case "service_tunneling":
+                case "addon_management":
+                    endpoint += "/" + toolName.replace("_", "/");
+                    break;
+                default:
+                    endpoint += "/" + toolName;
+            }
+
             mockTools.push({
                 id: `${connection.id}_${toolName}`,
                 name: toolName,
-                description: `MCP tool for ${toolName} operations`,
-                parameters: {},
+                description: `MCP tool for ${toolName.replace("_", " ")} operations`,
+                parameters: this.getToolParameters(toolName),
                 capabilities: [toolName],
-                endpoint: `ws://${connection.server}:${connection.port}/mcp/${toolName}`,
+                endpoint,
                 status: "connected"
             });
         }
 
         return mockTools;
+    }
+
+    private getToolParameters(toolName: string): Record<string, any> {
+        // Define parameters for each tool type
+        const paramSchemas: Record<string, any> = {
+            memory_management: {
+                operation: { type: "string", required: true, description: "Memory operation (get, set, delete)" },
+                key: { type: "string", required: false, description: "Memory key" },
+                value: { type: "any", required: false, description: "Memory value" }
+            },
+            file_operations: {
+                operation: { type: "string", required: true, description: "File operation (read, write, delete)" },
+                path: { type: "string", required: true, description: "File path" },
+                content: { type: "string", required: false, description: "File content" }
+            },
+            cluster_management: {
+                operation: { type: "string", required: true, description: "Cluster operation (info, status, nodes)" }
+            },
+            pod_operations: {
+                namespace: { type: "string", required: false, description: "Kubernetes namespace", default: "default" },
+                operation: { type: "string", required: true, description: "Pod operation (get, create, delete)" }
+            },
+            deployment_management: {
+                namespace: { type: "string", required: false, description: "Kubernetes namespace", default: "default" },
+                operation: { type: "string", required: true, description: "Deployment operation" }
+            },
+            logs: {
+                namespace: { type: "string", required: false, description: "Kubernetes namespace", default: "default" },
+                pod: { type: "string", required: true, description: "Pod name" },
+                container: { type: "string", required: false, description: "Container name" },
+                tail: { type: "number", required: false, description: "Number of lines to tail", default: 100 }
+            },
+            chart_management: {
+                operation: { type: "string", required: true, description: "Chart operation (search, install, upgrade)" },
+                chart: { type: "string", required: false, description: "Chart name" },
+                repo: { type: "string", required: false, description: "Repository name" }
+            },
+            local_cluster: {
+                operation: { type: "string", required: true, description: "Minikube operation (start, stop, status)" },
+                driver: { type: "string", required: false, description: "Minikube driver" }
+            }
+        };
+
+        return paramSchemas[toolName] || {};
     }
 
     private startHeartbeat(): void {
@@ -190,15 +298,15 @@ export class MCPIntegrationService {
 
         // Simulate different tool responses based on tool type
         switch (tool.name) {
-            case "terminal":
+            case "memory_management":
                 return {
-                    type: "terminal_command",
-                    command: parameters.command,
-                    output: `Mock terminal output for: ${parameters.command}`,
-                    success: true
+                    type: "memory_operation",
+                    operation: parameters.operation,
+                    success: true,
+                    result: `Memory ${parameters.operation} completed`
                 };
 
-            case "file_system":
+            case "file_operations":
                 return {
                     type: "file_operation",
                     operation: parameters.operation,
@@ -207,23 +315,85 @@ export class MCPIntegrationService {
                     result: `File operation ${parameters.operation} completed`
                 };
 
-            case "ai_chat":
+            case "command_execution":
                 return {
-                    type: "ai_response",
-                    message: parameters.message,
-                    response: `AI response to: ${parameters.message}`,
-                    model: parameters.model || "gpt-3.5-turbo"
+                    type: "terminal_command",
+                    command: parameters.command,
+                    output: `Mock terminal output for: ${parameters.command}`,
+                    success: true
                 };
 
-            case "code_analysis":
+            case "cluster_management":
                 return {
-                    type: "code_analysis",
-                    file: parameters.file,
-                    analysis: {
-                        syntax: "valid",
-                        complexity: "medium",
-                        suggestions: ["Add error handling", "Optimize performance"]
-                    }
+                    type: "kubernetes_cluster",
+                    operation: parameters.operation,
+                    result: `Kubernetes cluster ${parameters.operation} completed`,
+                    success: true
+                };
+
+            case "pod_operations":
+                return {
+                    type: "kubernetes_pods",
+                    namespace: parameters.namespace || "default",
+                    result: `Pod operations in namespace ${parameters.namespace || "default"}`,
+                    success: true
+                };
+
+            case "deployment_management":
+                return {
+                    type: "kubernetes_deployments",
+                    namespace: parameters.namespace || "default",
+                    result: `Deployment management in namespace ${parameters.namespace || "default"}`,
+                    success: true
+                };
+
+            case "service_operations":
+                return {
+                    type: "kubernetes_services",
+                    namespace: parameters.namespace || "default",
+                    result: `Service operations in namespace ${parameters.namespace || "default"}`,
+                    success: true
+                };
+
+            case "logs":
+                return {
+                    type: "kubernetes_logs",
+                    namespace: parameters.namespace || "default",
+                    pod: parameters.pod,
+                    result: `Logs retrieved from ${parameters.pod} in ${parameters.namespace || "default"}`,
+                    success: true
+                };
+
+            case "chart_management":
+                return {
+                    type: "helm_charts",
+                    operation: parameters.operation,
+                    result: `Helm chart ${parameters.operation} completed`,
+                    success: true
+                };
+
+            case "release_management":
+                return {
+                    type: "helm_releases",
+                    namespace: parameters.namespace || "default",
+                    result: `Helm release management in ${parameters.namespace || "default"}`,
+                    success: true
+                };
+
+            case "local_cluster":
+                return {
+                    type: "minikube_cluster",
+                    operation: parameters.operation,
+                    result: `Minikube ${parameters.operation} completed`,
+                    success: true
+                };
+
+            case "development_environment":
+                return {
+                    type: "minikube_development",
+                    operation: parameters.operation,
+                    result: `Minikube development environment ${parameters.operation}`,
+                    success: true
                 };
 
             default:

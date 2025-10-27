@@ -1,11 +1,20 @@
-/** @type {import("prettier").Config} */
 module.exports = {
-    plugins: ["prettier-plugin-jsdoc", "prettier-plugin-organize-imports"],
-    printWidth: 120,
-    trailingComma: "es5",
-    useTabs: false,
-    jsdocVerticalAlignment: true,
-    jsdocSeparateReturnsFromParam: true,
-    jsdocSeparateTagGroups: true,
-    jsdocPreferCodeFences: true,
+  semi: true,
+  trailingComma: 'es5',
+  singleQuote: true,
+  printWidth: 100,
+  tabWidth: 4,
+  useTabs: false,
+  bracketSpacing: true,
+  arrowParens: 'avoid',
+  endOfLine: 'lf',
+  overrides: [
+    {
+      files: '*.md',
+      options: {
+        printWidth: 80,
+        proseWrap: 'always',
+      },
+    },
+  ],
 };

@@ -662,16 +662,48 @@ process.on("uncaughtException", (error) => {
     electronApp.quit();
 });
 
-let lastWaveWindowCount = 0;
-globalEvents.on("windows-updated", () => {
-    const wwCount = getAllWaveWindows().length;
-    if (wwCount == lastWaveWindowCount) {
-        return;
+let mcpServerProcess: child_process.ChildProcess | null = null;
+
+async function startMCPServers(): Promise<void> {
+    console.log("Starting MCP servers for enhanced AI functionality...");
+
+    try {
+        // Get the path to the MCP server manager in the packaged app
+        const mcpServerPath = path.join((process as any).resourcesPath || __dirname, '..', 'mcp-servers', 'mcp-server-manager.js');
+
+        // Start MCP servers as a background process
+        mcpServerProcess = child_process.spawn('node', [mcpServerPath, 'start'], {
+            stdio: ['ignore', 'pipe', 'pipe'],
+            detached: true,
+            env: { ...process.env, NODE_ENV: isDev ? 'development' : 'production' }
+        });
+
+        mcpServerProcess.stdout?.on('data', (data) => {
+            console.log('MCP Server:', data.toString().trim());
+        });
+
+        mcpServerProcess.stderr?.on('data', (data) => {
+            console.error('MCP Server Error:', data.toString().trim());
+        });
+
+        mcpServerProcess.on('close', (code) => {
+            console.log(`MCP servers stopped with code ${code}`);
+            mcpServerProcess = null;
+        });
+
+        console.log("✅ MCP servers started successfully");
+    } catch (error) {
+        console.error("❌ Failed to start MCP servers:", error);
     }
-    lastWaveWindowCount = wwCount;
-    console.log("windows-updated", wwCount);
-    makeAppMenu();
-});
+}
+
+function stopMCPServers(): void {
+    if (mcpServerProcess) {
+        console.log("Stopping MCP servers...");
+        mcpServerProcess.kill();
+        mcpServerProcess = null;
+    }
+}
 
 async function appMain() {
     // Set disableHardwareAcceleration as early as possible, if required.
@@ -690,7 +722,7 @@ async function appMain() {
     try {
         await runWaveSrv(handleWSEvent);
     } catch (e) {
-        console.log(e.toString());
+        console.log(e?.toString());
     }
     const ready = await getWaveSrvReady();
     console.log("wavesrv ready signal received", ready, Date.now() - startTs, "ms");
@@ -709,6 +741,10 @@ async function appMain() {
     ensureHotSpareTab(fullConfig);
     await relaunchBrowserWindows();
     await initDocsite();
+
+    // Start MCP servers for enhanced AI functionality
+    await startMCPServers();
+
     setTimeout(runActiveTimer, 5000); // start active timer, wait 5s just to be safe
     setTimeout(sendDisplaysTDataEvent, 5000);
 
@@ -732,7 +768,16 @@ async function appMain() {
     }
 }
 
-appMain().catch((e) => {
+// Cleanup MCP servers on app shutdown
+electronApp.on('before-quit', () => {
+    stopMCPServers();
+});
+
+electronApp.on('window-all-closed', () => {
+    stopMCPServers();
+});
+
+appMain().catch((e: unknown) => {
     console.log("appMain error", e);
     electronApp.quit();
 });
