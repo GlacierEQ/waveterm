@@ -2,7 +2,7 @@ const { name, version } = require('./package.json');
 
 module.exports = {
   appId: 'dev.waveterm.app',
-  productName: 'Wave Terminal',
+  productName: 'Wave Terminal - AI Kubernetes Terminal',
   copyright: 'Copyright © 2024 Command Line Inc.',
   directories: {
     output: 'make',
