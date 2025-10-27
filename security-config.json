@@ -1,0 +1,26 @@
+{
+  "rateLimiting": {
+    "maxRequestsPerMinute": 100,
+    "maxRequestsPerHour": 1000,
+    "maxConcurrentRequests": 10
+  },
+  "inputValidation": {
+    "maxCommandLength": 1000,
+    "allowedCharacters": {},
+    "blockedCommands": [
+      "rm -rf /",
+      "sudo rm -rf /*",
+      "dd if=/dev/zero"
+    ]
+  },
+  "securityHeaders": {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "X-XSS-Protection": "1; mode=block"
+  },
+  "logging": {
+    "level": "info",
+    "maxLogSize": "10MB",
+    "retentionDays": 30
+  }
+}

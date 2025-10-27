@@ -1,31 +1,108 @@
 {
-    "include": ["frontend/**/*", "emain/**/*"],
+    "include": ["frontend/**/*", "emain/**/*", "scripts/**/*", "tests/**/*"],
+    "exclude": ["node_modules", "dist", "build", ".next", ".cache", "coverage", "**/*.spec.ts", "**/*.test.ts"],
     "compilerOptions": {
-        "target": "es6",
-        "module": "es2020",
-        "jsx": "preserve",
+        "target": "ES2022",
+        "module": "ES2022",
+        "lib": ["ES2022", "DOM", "DOM.Iterable", "WebWorker"],
+        "jsx": "react-jsx",
+        "jsxImportSource": "react",
+        "allowJs": true,
+        "checkJs": false,
         "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "bundler",
         "allowSyntheticDefaultImports": true,
-        "resolveJsonModule": true,
+        "forceConsistentCasingInFileNames": true,
+        "strict": true,
+        "noEmit": true,
+        "skipLibCheck": true,
+        "skipDefaultLibCheck": true,
+        "incremental": true,
+        "tsBuildInfoFile": ".cache/tsconfig.tsbuildinfo",
         "isolatedModules": true,
+        "verbatimModuleSyntax": false,
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "allowImportingTsExtensions": false,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "exactOptionalPropertyTypes": true,
+        "noImplicitOverride": true,
+        "noPropertyAccessFromIndexSignature": false,
+        "noUncheckedIndexedAccess": false,
+        "noImplicitReturns": true,
+        "noFallthroughCasesInSwitch": true,
+        "noImplicitAny": true,
+        "strictNullChecks": true,
+        "strictFunctionTypes": true,
+        "strictBindCallApply": true,
+        "strictPropertyInitialization": true,
+        "noImplicitThis": true,
+        "alwaysStrict": true,
+        "useUnknownInCatchVariables": true,
         "experimentalDecorators": true,
+        "emitDecoratorMetadata": true,
         "downlevelIteration": true,
+        "declaration": false,
+        "declarationMap": false,
+        "sourceMap": true,
+        "removeComments": false,
+        "importHelpers": true,
         "baseUrl": "./",
         "paths": {
+            "@/*": ["frontend/*"],
             "@/app/*": ["frontend/app/*"],
             "@/util/*": ["frontend/util/*"],
             "@/layout/*": ["frontend/layout/*"],
             "@/store/*": ["frontend/app/store/*"],
             "@/view/*": ["frontend/app/view/*"],
             "@/element/*": ["frontend/app/element/*"],
-            "@/shadcn/*": ["frontend/app/shadcn/*"]
+            "@/shadcn/*": ["frontend/app/shadcn/*"],
+            "@/components/*": ["frontend/app/components/*"],
+            "@/hooks/*": ["frontend/app/hooks/*"],
+            "@/types/*": ["frontend/app/types/*"],
+            "@/constants/*": ["frontend/app/constants/*"],
+            "@/styles/*": ["frontend/app/styles/*"],
+            "@/assets/*": ["frontend/assets/*"],
+            "@/lib/*": ["frontend/lib/*"],
+            "@/mcp/*": ["mcp-servers/*"],
+            "@/scripts/*": ["scripts/*"],
+            "@/tests/*": ["tests/*"],
+            "@/config/*": ["config/*"]
         },
-        "lib": ["dom", "dom.iterable", "es6"],
-        "allowJs": true,
-        "strict": true,
-        "noEmit": true
-    }
+        "typeRoots": ["node_modules/@types", "frontend/types"],
+        "types": ["node", "vitest/globals", "vite/client"],
+        "plugins": [
+            {
+                "name": "typescript-plugin-css-modules",
+                "options": {
+                    "classnameTransform": "dashes",
+                    "customMatcher": "\\.module\\.(css|scss|sass)$"
+                }
+            }
+        ],
+        "maxNodeModuleJsDepth": 2,
+        "preserveWatchOutput": true,
+        "pretty": true,
+        "traceResolution": false,
+        "listEmittedFiles": false,
+        "listFiles": false,
+        "explainFiles": false,
+        "build": false
+    },
+    "ts-node": {
+        "esm": true,
+        "experimentalSpecifierResolution": "node",
+        "compilerOptions": {
+            "module": "ES2022",
+            "target": "ES2022"
+        }
+    },
+    "files": [
+        "frontend/app/globals.d.ts"
+    ],
+    "references": [
+        {
+            "path": "./tsconfig.node.json"
+        }
+    ]
 }

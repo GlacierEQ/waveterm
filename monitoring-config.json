@@ -1,0 +1,27 @@
+{
+  "metrics": {
+    "responseTime": true,
+    "errorRate": true,
+    "throughput": true,
+    "agentPerformance": true
+  },
+  "alerts": {
+    "highErrorRate": {
+      "threshold": 0.05,
+      "action": "restart_agent"
+    },
+    "slowResponse": {
+      "threshold": 5000,
+      "action": "optimize_agent"
+    },
+    "securityThreat": {
+      "threshold": 0,
+      "action": "immediate_response"
+    }
+  },
+  "logging": {
+    "level": "info",
+    "format": "json",
+    "retention": "30d"
+  }
+}

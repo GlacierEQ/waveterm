@@ -238,12 +238,29 @@ class SecurityAuditor {
             if (fs.existsSync(file)) {
                 const content = fs.readFileSync(file, 'utf8');
 
-                if (content.includes('console.log') && (content.includes('API') || content.includes('key') || content.includes('token'))) {
+                // Check for sensitive data logging - be more specific
+                const sensitivePatterns = [
+                    /console\.log.*(?:API|api).*(?:key|token|secret)/gi,
+                    /console\.log.*(?:password|pwd|pass)/gi,
+                    /console\.log.*(?:secret|token|auth)/gi,
+                    /console\.debug.*(?:API|api).*(?:key|token|secret)/gi,
+                    /console\.info.*(?:API|api).*(?:key|token|secret)/gi
+                ];
+
+                let hasSensitiveLogging = false;
+                for (const pattern of sensitivePatterns) {
+                    if (pattern.test(content)) {
+                        hasSensitiveLogging = true;
+                        break;
+                    }
+                }
+
+                if (hasSensitiveLogging) {
                     this.issues.push({
                         type: 'MEDIUM',
                         category: 'Data Logging',
                         issue: `Potential sensitive data logging in ${path.basename(file)}`,
-                        fix: 'Remove or sanitize console.log statements'
+                        fix: 'Remove or sanitize console.log statements containing sensitive data'
                     });
                 }
 

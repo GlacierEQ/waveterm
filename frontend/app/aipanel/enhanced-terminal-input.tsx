@@ -56,22 +56,36 @@ export const EnhancedTerminalInput: React.FC<EnhancedTerminalInputProps> = ({
     const [securityVisible, setSecurityVisible] = useState(false);
     const [currentSuggestion, setCurrentSuggestion] = useState<CommandSuggestion | null>(null);
     const [currentExplanation, setCurrentExplanation] = useState<CommandExplanation | null>(null);
-    const [loading, setLoading] = useState(false);
-    const [agents, setAgents] = useState<AIAgent[]>([]);
-    const [aiEnabled, setAiEnabled] = useState(true);
+    const [validationError, setValidationError] = useState<string | null>(null);
 
     const inputRef = useRef<any>(null);
 
-    // Current context for AI agents
-    const currentContext: AgentContext = {
-        sessionId: "current",
-        tabId: "main",
-        workingDirectory,
-        recentCommands,
-        environmentVariables,
-        shellType,
-        sharedContext: {},
-        performance: { responseTime: 0, accuracy: 0, reliability: 0 }
+    // Input validation utilities
+    const validateCommand = (cmd: string): { isValid: boolean; error?: string } => {
+        // Check length
+        if (cmd.length > 1000) {
+            return { isValid: false, error: 'Command too long' };
+        }
+
+        // Check allowed characters
+        if (!/^[a-zA-Z0-9\s\-_.\/~:]+$/.test(cmd)) {
+            return { isValid: false, error: 'Command contains invalid characters' };
+        }
+
+        // Check for blocked commands
+        const cmdLower = cmd.toLowerCase();
+        const blockedCommands = ['rm -rf /', 'sudo rm -rf /*', 'dd if=/dev/zero', 'mkfs', 'fdisk'];
+        for (const blocked of blockedCommands) {
+            if (cmdLower.includes(blocked)) {
+                return { isValid: false, error: 'Blocked command detected' };
+            }
+        }
+
+        return { isValid: true };
+    };
+
+    const sanitizeInput = (input: string): string => {
+        return input.replace(/[\x00-\x1F\x7F]/g, '').trim();
     };
 
     // Load agents on component mount
@@ -82,19 +96,34 @@ export const EnhancedTerminalInput: React.FC<EnhancedTerminalInputProps> = ({
 
     // Handle command input changes
     const handleCommandChange = useCallback((value: string) => {
-        setCommand(value);
+        const sanitizedValue = sanitizeInput(value);
+        setCommand(sanitizedValue);
+
+        // Validate input and show error if invalid
+        if (sanitizedValue.trim()) {
+            const validation = validateCommand(sanitizedValue);
+            setValidationError(validation.isValid ? null : validation.error || null);
+        } else {
+            setValidationError(null);
+        }
 
         // Show suggestions if AI is enabled and command is not empty
-        if (aiEnabled && value.trim() && !suggestionsVisible) {
+        if (aiEnabled && sanitizedValue.trim() && !suggestionsVisible) {
             setSuggestionsVisible(true);
-        } else if (!value.trim()) {
+        } else if (!sanitizedValue.trim()) {
             setSuggestionsVisible(false);
         }
     }, [aiEnabled, suggestionsVisible]);
 
     // Handle suggestion selection
     const handleSuggestionSelect = useCallback((suggestion: string) => {
-        setCommand(suggestion);
+        const sanitizedSuggestion = sanitizeInput(suggestion);
+        setCommand(sanitizedSuggestion);
+
+        // Validate the suggestion
+        const validation = validateCommand(sanitizedSuggestion);
+        setValidationError(validation.isValid ? null : validation.error || null);
+
         setSuggestionsVisible(false);
         inputRef.current?.focus();
     }, []);
@@ -103,7 +132,15 @@ export const EnhancedTerminalInput: React.FC<EnhancedTerminalInputProps> = ({
     const handleSubmit = useCallback(async () => {
         if (!command.trim()) return;
 
+        // Validate command before execution
+        const validation = validateCommand(command);
+        if (!validation.isValid) {
+            setValidationError(validation.error || 'Invalid command');
+            return;
+        }
+
         setLoading(true);
+        setValidationError(null);
 
         try {
             // Send command to terminal
@@ -289,19 +326,30 @@ export const EnhancedTerminalInput: React.FC<EnhancedTerminalInputProps> = ({
                 {/* Current command analysis */}
                 {command.trim() && (
                     <div className="command-analysis">
-                        <Alert
-                            message="Command Analysis"
-                            description={
-                                <div className="analysis-details">
-                                    <Tag>Command: {command}</Tag>
-                                    <Tag>Directory: {workingDirectory}</Tag>
-                                    <Tag>Shell: {shellType}</Tag>
-                                </div>
-                            }
-                            type="info"
-                            showIcon
-                            closable
-                        />
+                        {validationError ? (
+                            <Alert
+                                message="Command Validation Error"
+                                description={validationError}
+                                type="error"
+                                showIcon
+                                closable
+                                onClose={() => setValidationError(null)}
+                            />
+                        ) : (
+                            <Alert
+                                message="Command Analysis"
+                                description={
+                                    <div className="analysis-details">
+                                        <Tag>Command: {command}</Tag>
+                                        <Tag>Directory: {workingDirectory}</Tag>
+                                        <Tag>Shell: {shellType}</Tag>
+                                    </div>
+                                }
+                                type="info"
+                                showIcon
+                                closable
+                            />
+                        )}
                     </div>
                 )}
             </div>
