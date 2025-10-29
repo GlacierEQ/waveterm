@@ -49,7 +49,7 @@ module.exports = {
       }
     ],
     category: 'Development',
-    synopsis: 'AI-Enhanced Terminal with Multi-Agent System',
+    synopsis: 'AI-Enhanced Terminal with Multi-Agent System and Kubernetes Integration',
   },
   win: {
     target: [

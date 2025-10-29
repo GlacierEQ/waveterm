@@ -17,6 +17,19 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
+      "@/aipanel/*": ["./frontend/app/aipanel/*"],
+      "@/app/*": ["./frontend/app/*"],
+      "@/block/*": ["./frontend/app/block/*"],
+      "@/element/*": ["./frontend/app/element/*"],
+      "@/modals/*": ["./frontend/app/modals/*"],
+      "@/notification/*": ["./frontend/app/notification/*"],
+      "@/onboarding/*": ["./frontend/app/onboarding/*"],
+      "@/shadcn/*": ["./frontend/app/shadcn/*"],
+      "@/store/*": ["./frontend/app/store/*"],
+      "@/suggestion/*": ["./frontend/app/suggestion/*"],
+      "@/tab/*": ["./frontend/app/tab/*"],
+      "@/view/*": ["./frontend/app/view/*"],
+      "@/workspace/*": ["./frontend/app/workspace/*"],
       "@/*": ["./frontend/*"]
     },
     "types": ["node", "vite/client"]

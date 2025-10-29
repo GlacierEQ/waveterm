@@ -1,7 +1,7 @@
 {
   "name": "waveterm",
   "version": "0.12.1",
-  "description": "Wave Terminal - AI-Enhanced Terminal with Multi-Agent System",
+  "description": "Wave Terminal - AI-Enhanced Terminal with Multi-Agent System and Kubernetes Integration",
   "main": "emain/main.js",
   "homepage": "https://www.waveterm.dev",
   "repository": {
@@ -9,27 +9,43 @@
     "url": "git+https://github.com/wavetermdev/waveterm.git"
   },
   "scripts": {
-    "dev": "concurrently \"npm run build:frontend:dev\" \"electron emain/main.js\"",
-    "start": "electron emain/main.js",
-    "build:dev": "vite build --mode development",
-    "build:prod": "vite build --mode production",
-    "build:frontend:dev": "vite build --mode development --watch",
-    "electron:package": "electron-builder",
-    "electron:pack": "electron-builder --dir",
-    "electron:dist": "electron-builder --publish=never",
-    "validate": "npm run typecheck && npm run lint && npm run test",
-    "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
-    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "dev": "npm-run-all -p dev:frontend dev:electron dev:storybook",
+    "dev:frontend": "vite build --mode development --watch",
+    "dev:electron": "wait-on dist/frontend/index.html && electron emain/main.js",
+    "dev:storybook": "storybook dev -p 6006",
+    "dev:all": "concurrently \"npm run dev:frontend\" \"npm run dev:electron\" \"npm run dev:storybook\"",
+    "build": "npm-run-all build:prep build:main build:renderer build:post",
+    "build:prep": "node scripts/fix-overlayscrollbars.mjs && node scripts/fix-d3-sankey.mjs",
+    "build:main": "tsc -p tsconfig.node.json",
+    "build:renderer": "vite build --mode production",
+    "build:storybook": "storybook build",
+    "build:post": "echo 'Build complete!'",
     "test": "vitest run",
     "test:watch": "vitest",
-    "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build",
+    "test:coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "npm run lint -- --fix",
+    "typecheck": "tsc --noEmit",
+    "validate": "npm-run-all typecheck lint test build",
+    "package": "npm run build && electron-builder",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:win": "npm run build && electron-builder --win",
+    "package:linux": "npm run build && electron-builder --linux",
+    "dist": "npm run build && electron-builder --publish=never",
     "k8s:setup": "node scripts/setup-kubernetes.js",
     "k8s:check": "node scripts/check-kubernetes.js",
     "k8s:install-tools": "node scripts/install-k8s-tools.js",
-    "mcp:k8s": "concurrently \"node mcp-servers/kubectl-mcp-server.js\" \"node mcp-servers/helm-mcp-server.js\" \"node mcp-servers/minikube-mcp-server.js\"",
-    "ai:k8s": "concurrently \"npm run dev\" \"npm run mcp:k8s\""
+    "mcp:start": "python3 mcp-servers/terminal-mcp.py",
+    "mcp:dev": "concurrently \"npm run dev\" \"npm run mcp:start\"",
+    "clean": "rimraf dist build node_modules/.vite",
+    "preinstall": "npx npm-force-resolutions",
+    "postinstall": "electron-builder install-app-deps",
+    "reset": "npm run clean && rimraf node_modules && npm install",
+    "ai:setup": "node scripts/setup-ai-agents.js",
+    "ai:dev": "concurrently \"npm run dev\" \"python3 mcp-servers/terminal-mcp.py\"",
+    "ai:build": "npm run build:prod && npm run electron:package",
+    "agents:status": "node scripts/check-agent-status.js"
   },
   "keywords": [
     "terminal",
@@ -50,30 +66,41 @@
   "author": "Command Line Inc",
   "license": "Apache-2.0",
   "dependencies": {
-    "@ai-sdk/react": "^2.0.76",
+    "@ai-sdk/react": "^2.0.81",
+    "@ant-design/icons": "^6.1.0",
+    "@aws-sdk/client-bedrock-runtime": "^3.374.0",
+    "@aws-sdk/credential-provider-node": "^3.374.0",
+    "@aws-sdk/node-http-handler": "^3.374.0",
     "@floating-ui/react": "^0.27.16",
+    "@mermaid-js/parser": "^0.6.3",
     "@monaco-editor/loader": "^1.5.0",
     "@monaco-editor/react": "^4.7.0",
     "@observablehq/plot": "^0.6.17",
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@react-hook/resize-observer": "^2.0.2",
+    "@shikijs/langs": "^3.14.0",
     "@table-nav/core": "^0.0.7",
     "@table-nav/react": "^0.0.7",
     "@tanstack/react-table": "^8.21.3",
+    "@types/aws-lambda": "^8.10.134",
+    "@types/express": "^4.17.21",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-search": "^0.15.0",
     "@xterm/addon-serialize": "^0.13.0",
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/addon-webgl": "^0.18.0",
     "@xterm/xterm": "^5.5.0",
-    "ai": "^5.0.44",
+    "ai": "^5.0.81",
+    "antd": "^5.27.6",
+    "aws-sdk": "^2.1566.0",
     "base64-js": "^1.5.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "color": "^4.2.3",
     "colord": "^2.9.3",
     "css-tree": "^3.1.0",
+    "cytoscape": "^3.33.1",
     "dayjs": "^1.11.15",
     "debug": "^4.4.3",
     "electron-updater": "^6.6",
@@ -112,7 +139,7 @@
     "rxjs": "^7.8.2",
     "semver": "^7.7.3",
     "shell-quote": "^1.8.3",
-    "shiki": "^3.13.0",
+    "shiki": "^3.14.0",
     "sprintf-js": "^1.1.3",
     "streamdown": "^1.3.0",
     "tailwind-merge": "^3.3.1",
@@ -138,75 +165,133 @@
     "@storybook/testing-library": "^0.2.2",
     "@tailwindcss/vite": "^4.1.16",
     "@types/lodash": "^4.17.0",
-    "@types/node": "^20.14.0",
+    "@types/node": "^24.9.2",
     "@types/react": "^18.3.3",
     "@types/react-dom": "^18.3.0",
     "@typescript-eslint/eslint-plugin": "^7.18.0",
     "@typescript-eslint/parser": "^7.18.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "@vitejs/plugin-react-swc": "^4.2.0",
     "concurrently": "^8.2.2",
     "electron": "^31.3.1",
     "electron-builder": "^24.13.3",
+    "electron-vite": "^4.0.1",
     "eslint": "^8.57.0",
     "eslint-plugin-react-hooks": "^4.6.2",
     "eslint-plugin-react-refresh": "^0.4.7",
+    "npm-run-all": "^4.1.5",
     "prettier": "^3.3.3",
-    "typescript": "^5.5.4",
+    "rimraf": "^6.0.0",
+    "sass-embedded": "^1.93.2",
+    "typescript": "^5.9.3",
     "vite": "^5.4.2",
-    "vitest": "^2.0.5"
+    "vite-plugin-image-optimizer": "^2.0.2",
+    "vite-plugin-static-copy": "^3.1.4",
+    "vite-plugin-svgr": "^4.5.0",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^2.0.5",
+    "wait-on": "^8.0.1"
   },
   "build": {
     "appId": "dev.waveterm.app",
     "productName": "Wave Terminal",
+    "copyright": "Copyright © 2025 WaveTerm",
     "directories": {
-      "output": "make"
+      "output": "release/${version}",
+      "buildResources": "assets"
     },
     "files": [
       "dist/**/*",
       "emain/**/*",
-      "node_modules/**/*",
-      "package.json"
+      "!**/node_modules/*/{CHANGELOG.md,README.md,README,readme.md,readme}",
+      "!**/node_modules/.bin",
+      "!**/*.{o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+      "!.editorconfig",
+      "!**/._*"
     ],
+    "extraResources": [
+      {
+        "from": "assets/icons",
+        "to": "icons",
+        "filter": [
+          "**/*"
+        ]
+      },
+      "mcp-servers/**/*"
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "wavetermdev",
+      "repo": "waveterm"
+    },
     "mac": {
-      "category": "public.app-category.developer",
+      "category": "public.app-category.developer-tools",
       "target": [
+        "dmg",
+        "zip"
+      ],
+      "icon": "assets/icons/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Required for voice input features",
+        "NSCameraUsageDescription": "Required for camera access in terminal sessions"
+      }
+    },
+    "dmg": {
+      "sign": false,
+      "contents": [
         {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
         }
       ]
     },
     "linux": {
       "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
+        "AppImage",
+        "deb",
+        "rpm"
+      ],
+      "icon": "assets/icons/512x512.png",
+      "category": "Development",
+      "maintainer": "WaveTerm Team <support@waveterm.dev>",
+      "desktop": {
+        "Name": "WaveTerm",
+        "Comment": "AI-Enhanced Terminal with Kubernetes",
+        "Categories": "Development;Utility;"
+      }
     },
     "win": {
       "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    }
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icons/icon.ico",
+      "publisherName": "WaveTerm",
+      "verifyUpdateCodeSignature": false,
+      "rfc3161TimeStampServer": "http://timestamp.digicert.com"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "WaveTerm",
+      "include": "build/installer.nsh"
+    },
+    "afterPack": "./build/afterPack.js",
+    "afterSign": "./build/notarize.js",
+    "generateUpdatesFilesForAllChannels": true
   }
 }

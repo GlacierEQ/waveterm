@@ -664,12 +664,34 @@ process.on("uncaughtException", (error) => {
 
 let mcpServerProcess: child_process.ChildProcess | null = null;
 
+function resolveMcpServerPath(): string {
+    const resourcePath = (process as any).resourcesPath as string | undefined;
+    const candidates: string[] = [];
+
+    if (resourcePath) {
+        candidates.push(
+            path.join(resourcePath, 'app.asar.unpacked', 'mcp-servers', 'mcp-server-manager.js'),
+            path.join(resourcePath, 'app.asar', 'mcp-servers', 'mcp-server-manager.js'),
+            path.join(resourcePath, 'mcp-servers', 'mcp-server-manager.js')
+        );
+    }
+
+    candidates.push(path.join(__dirname, '..', 'mcp-servers', 'mcp-server-manager.js'));
+
+    for (const candidate of candidates) {
+        if (fs.existsSync(candidate)) {
+            return candidate;
+        }
+    }
+
+    throw new Error(`Unable to locate MCP server manager. Tried: ${candidates.join(', ')}`);
+}
+
 async function startMCPServers(): Promise<void> {
     console.log("Starting MCP servers for enhanced AI functionality...");
 
     try {
-        // Get the path to the MCP server manager in the packaged app
-        const mcpServerPath = path.join((process as any).resourcesPath || __dirname, '..', 'mcp-servers', 'mcp-server-manager.js');
+        const mcpServerPath = resolveMcpServerPath();
 
         // Start MCP servers as a background process
         mcpServerProcess = child_process.spawn('node', [mcpServerPath, 'start'], {

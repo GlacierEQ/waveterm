@@ -14,37 +14,43 @@ class MCPServerManager {
             {
                 name: 'Memory',
                 script: 'memory-mcp-server.js',
-                port: 3000,
+                port: 13000,
                 process: null
             },
             {
                 name: 'Filesystem',
                 script: 'filesystem-mcp-server.js',
-                port: 3001,
+                port: 13001,
                 process: null
             },
             {
                 name: 'Terminal',
                 script: 'terminal-mcp-server.js',
-                port: 3002,
+                port: 13002,
                 process: null
             },
             {
                 name: 'Kubectl',
                 script: 'kubectl-mcp-server.js',
-                port: 3003,
+                port: 13003,
                 process: null
             },
             {
                 name: 'Helm',
                 script: 'helm-mcp-server.js',
-                port: 3004,
+                port: 13004,
                 process: null
             },
             {
                 name: 'Minikube',
                 script: 'minikube-mcp-server.js',
-                port: 3005,
+                port: 13005,
+                process: null
+            },
+            {
+                name: 'Docker',
+                script: 'docker-mcp-server.js',
+                port: 13006,
                 process: null
             }
         ];

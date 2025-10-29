@@ -7,6 +7,7 @@
 
 const http = require('http');
 const { spawn } = require('child_process');
+const os = require('os');
 const isDev = process.env.NODE_ENV !== 'production';
 
 class TerminalMCPServer {

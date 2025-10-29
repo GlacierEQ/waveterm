@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const frontendRoot = path.resolve(projectRoot, "frontend");
+const frontendAppRoot = path.resolve(frontendRoot, "app");
 
 export default defineConfig(async () => {
     const [
@@ -27,7 +29,7 @@ export default defineConfig(async () => {
     return {
         root: ".",
         plugins: [
-            tsconfigPaths(),
+            tsconfigPaths({ ignoreConfigErrors: true }),
             { ...ViteImageOptimizer(), apply: "build" },
             svgr({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
@@ -40,9 +42,20 @@ export default defineConfig(async () => {
             }),
         ],
         resolve: {
-            alias: {
-                "@": path.resolve(projectRoot, "frontend"),
-            },
+            alias: [
+                { find: /^cytoscape$/, replacement: path.resolve(projectRoot, "frontend/shims/cytoscape.ts") },
+                { find: /^@\/app\//, replacement: `${frontendAppRoot}/` },
+                {
+                    find: /^@\/(block|element|modals|notification|onboarding|shadcn|store|suggestion|tab|view|workspace|aipanel)/,
+                    replacement: `${frontendAppRoot}/$1`,
+                },
+                {
+                    find: /^@\/(layout|types|util)/,
+                    replacement: `${frontendRoot}/$1`,
+                },
+                { find: /^@\//, replacement: `${frontendRoot}/` },
+                { find: "@", replacement: frontendRoot },
+            ],
         },
         optimizeDeps: {
             include: ["monaco-yaml/yaml.worker.js"],

@@ -6,6 +6,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
+const frontendRoot = path.resolve(projectRoot, "frontend");
+const frontendAppRoot = path.resolve(frontendRoot, "app");
 
 // from our electron build
 const CHROME = "chrome140";
@@ -71,24 +73,7 @@ function whoImportsTarget(target: string) {
     };
 }
 
-export default defineConfig(async () => {
-    const [
-        { default: tailwindcss },
-        { default: react },
-        { ViteImageOptimizer },
-        { viteStaticCopy },
-        { default: svgr },
-        { default: tsconfigPaths },
-    ] = await Promise.all([
-        import("@tailwindcss/vite"),
-        import("@vitejs/plugin-react-swc"),
-        import("vite-plugin-image-optimizer"),
-        import("vite-plugin-static-copy"),
-        import("vite-plugin-svgr"),
-        import("vite-tsconfig-paths"),
-    ]);
-
-    return {
+export default defineConfig({
     main: {
         root: ".",
         build: {
@@ -100,7 +85,7 @@ export default defineConfig(async () => {
             },
             outDir: "dist/main",
         },
-        plugins: [tsconfigPaths()],
+        plugins: [tsconfigPaths({ ignoreConfigErrors: true })],
         resolve: {
             alias: {
                 "@": "frontend",
@@ -133,7 +118,7 @@ export default defineConfig(async () => {
         server: {
             open: false,
         },
-        plugins: [tsconfigPaths()],
+        plugins: [tsconfigPaths({ ignoreConfigErrors: true })],
     },
     renderer: {
         root: ".",
@@ -167,8 +152,18 @@ export default defineConfig(async () => {
         },
         resolve: {
             alias: [
-                { find: "@", replacement: path.resolve(projectRoot, "frontend") },
-                { find: /^@\//, replacement: `${path.resolve(projectRoot, "frontend")}/` },
+                { find: /^cytoscape$/, replacement: path.resolve(projectRoot, "frontend/shims/cytoscape.ts") },
+                { find: /^@\/app\//, replacement: `${frontendAppRoot}/` },
+                {
+                    find: /^@\/(block|element|modals|notification|onboarding|shadcn|store|suggestion|tab|view|workspace|aipanel)/,
+                    replacement: `${frontendAppRoot}/$1`,
+                },
+                {
+                    find: /^@\/(layout|types|util)/,
+                    replacement: `${frontendRoot}/$1`,
+                },
+                { find: /^@\//, replacement: `${frontendRoot}/` },
+                { find: "@", replacement: frontendRoot },
             ],
         },
         server: {
@@ -185,7 +180,7 @@ export default defineConfig(async () => {
             },
         },
         plugins: [
-            tsconfigPaths(),
+            tsconfigPaths({ ignoreConfigErrors: true }),
             { ...ViteImageOptimizer(), apply: "build" },
             svgr({
                 svgrOptions: { exportType: "default", ref: true, svgo: false, titleProp: true },
