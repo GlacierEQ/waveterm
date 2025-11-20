@@ -53,4 +53,5 @@
   "references": [
     { "path": "./tsconfig.node.json" }
   ]
+  // Run `npm run typecheck` to keep `tsconfig.node.tsbuildinfo` in sync.
 }

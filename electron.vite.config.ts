@@ -4,6 +4,7 @@
 import { defineConfig } from "electron-vite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 const projectRoot = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(projectRoot, "frontend");

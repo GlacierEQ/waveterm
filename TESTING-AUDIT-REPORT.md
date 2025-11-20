@@ -124,11 +124,10 @@ Successfully completed comprehensive testing, security auditing, and best practi
 
 ### Testing Commands ✅
 ```bash
-npm run test              # Run all tests
-npm run test:ai          # AI system tests
-npm run test:security    # Security tests
+npm run test              # Run unit and integration tests
 npm run test:watch       # Watch mode testing
 npm run test:coverage    # Coverage reports
+npm run test:e2e         # Playwright end-to-end suites (if configured)
 ```
 
 ### Development Commands ✅
@@ -136,8 +135,8 @@ npm run test:coverage    # Coverage reports
 npm run ai:dev           # Start with AI agents
 npm run mcp:start        # Start MCP servers
 npm run agents:status    # Check agent status
-npm run agents:monitor   # Real-time monitoring
-npm run security:audit   # Security audit
+npm run ai:setup         # Bootstrap AI agents and env
+npm run k8s:setup        # Prepare Kubernetes tools
 npm run validate         # Full validation
 ```
 

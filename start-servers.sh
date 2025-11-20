@@ -25,8 +25,17 @@ node mcp-servers/helm-mcp-server.js 13004 &
 # Start Minikube MCP Server
 node mcp-servers/minikube-mcp-server.js 13005 &
 
+# Start Docker MCP Server
+node mcp-servers/docker-mcp-server.js 13006 &
+
+# Start OpenMemory MCP Server
+node mcp-servers/openmemory-mcp-server.js 13007 &
+
+# Start SuperMemory MCP Server
+node mcp-servers/supermemory-mcp-server.js 13008 &
+
 # Wait for all background processes to complete
 wait
 
 echo "✅ All MCP servers started successfully!"
-echo "🔌 MCP Servers running on ports 13000-13005"
+echo "🔌 MCP Servers running on ports 13000-13008"

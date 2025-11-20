@@ -5,71 +5,78 @@ import { AmazonQConfig } from '../config/amazon-q-config';
 
 interface AmazonQContextType {
   service: AmazonQService | null;
-  config: AIServiceConfig | null;
+  config: AIServiceConfig;
   updateConfig: (newConfig: Partial<AIServiceConfig>) => void;
   isConfigured: boolean;
 }
 
 const AmazonQContext = createContext<AmazonQContextType | undefined>(undefined);
 
+const STORAGE_KEY = 'amazonQConfig';
+const defaultConfig: AIServiceConfig = {
+  apiKey: '',
+  apiUrl: AmazonQConfig.API_ENDPOINT,
+  model: AmazonQConfig.DEFAULT_MODEL,
+  temperature: AmazonQConfig.DEFAULT_TEMPERATURE,
+  maxTokens: AmazonQConfig.DEFAULT_MAX_TOKENS,
+};
+
 export const AmazonQProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [service, setService] = useState<AmazonQService | null>(null);
-  const [config, setConfig] = useState<AIServiceConfig | null>(null);
+  const [config, setConfig] = useState<AIServiceConfig>(defaultConfig);
   const [isConfigured, setIsConfigured] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load config from localStorage on mount
   useEffect(() => {
     const loadConfig = () => {
+      if (typeof window === 'undefined') return;
+
       try {
-        const savedConfig = localStorage.getItem('amazonQConfig');
+        const savedConfig = window.localStorage.getItem(STORAGE_KEY);
         if (savedConfig) {
           const parsedConfig = JSON.parse(savedConfig);
-          setConfig(parsedConfig);
-          setService(new AmazonQService(parsedConfig));
-          setIsConfigured(true);
+          setConfig({ ...defaultConfig, ...parsedConfig });
         } else {
-          // Initialize with default config if none exists
-          const defaultConfig: AIServiceConfig = {
-            apiKey: '',
-            model: AmazonQConfig.DEFAULT_MODEL,
-            temperature: AmazonQConfig.DEFAULT_TEMPERATURE,
-            maxTokens: AmazonQConfig.DEFAULT_MAX_TOKENS,
-          };
           setConfig(defaultConfig);
-          setService(new AmazonQService(defaultConfig));
-          setIsConfigured(false);
         }
       } catch (error) {
         console.error('Error loading Amazon Q config:', error);
+        setConfig(defaultConfig);
+      } finally {
+        setIsHydrated(true);
       }
     };
 
     loadConfig();
   }, []);
 
+  useEffect(() => {
+    const validConfig = Boolean(config.apiKey && config.apiUrl);
+    setIsConfigured(validConfig);
+    if (validConfig) {
+      setService(new AmazonQService(config));
+    } else {
+      setService(null);
+    }
+  }, [config]);
+
+  const persistConfig = (updatedConfig: AIServiceConfig) => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedConfig));
+  };
+
   // Update config and save to localStorage
   const updateConfig = (newConfig: Partial<AIServiceConfig>) => {
     setConfig(prevConfig => {
-      if (!prevConfig) return null;
-      
       const updatedConfig = { ...prevConfig, ...newConfig };
-      
-      // Save to localStorage
-      localStorage.setItem('amazonQConfig', JSON.stringify(updatedConfig));
-      
-      // Update service with new config
-      if (service) {
-        service.updateConfig(updatedConfig);
-      } else {
-        setService(new AmazonQService(updatedConfig));
-      }
-      
-      // Update configured state based on API key presence
-      setIsConfigured(!!updatedConfig.apiKey);
-      
+      persistConfig(updatedConfig);
       return updatedConfig;
     });
   };
+
+  if (!isHydrated) {
+    return null;
+  }
 
   return (
     <AmazonQContext.Provider value={{ service, config, updateConfig, isConfigured }}>

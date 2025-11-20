@@ -81,7 +81,7 @@ class TerminalMCPServer {
                         this.handleCommands(req, res);
                         break;
                     case '/history':
-                        this.handleHistory(req, res);
+                        this.handleHistory(req, res, url);
                         break;
                     case '/shell':
                         this.handleShell(req, res);
@@ -321,11 +321,13 @@ class TerminalMCPServer {
         }
     }
 
-    handleHistory(req, res) {
+    handleHistory(req, res, url) {
         if (req.method === 'GET') {
-            const limit = parseInt(req.query?.limit) || 50;
+            const limitParam = url?.searchParams?.get('limit');
+            const parsedLimit = Number(limitParam);
+            const boundedLimit = Number.isFinite(parsedLimit) ? Math.max(1, Math.min(parsedLimit, 200)) : 50;
             const history = this.commandHistory
-                .slice(-limit)
+                .slice(-boundedLimit)
                 .reverse();
 
             res.writeHead(200);

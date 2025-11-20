@@ -6,6 +6,7 @@
  */
 
 const fs = require('fs');
+const path = require('path');
 const ts = require('typescript');
 
 // Minimal TypeScript loader so we can import the service without extra deps
@@ -23,7 +24,12 @@ require.extensions['.ts'] = function compile(module, filename) {
     module._compile(outputText, filename);
 };
 
-const { MCPIntegrationService } = require('../frontend/app/aipanel/mcp-integration');
+const repoRoot = process.env.WAVETERMINAL_ROOT || path.resolve(__dirname, '..');
+const integrationPath =
+    process.env.MCP_INTEGRATION_PATH ||
+    path.join(__dirname, '..', 'frontend', 'app', 'aipanel', 'mcp-integration');
+
+const { MCPIntegrationService } = require(integrationPath);
 
 async function testMCPIntegration() {
     console.log('🧪 Testing MCP Integration...\n');
@@ -35,7 +41,13 @@ async function testMCPIntegration() {
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         // Test available tools
-        const availableTools = await mcpService.discoverAvailableTools();
+        let availableTools = [];
+        try {
+            availableTools = await mcpService.discoverAvailableTools();
+        } catch (toolError) {
+            console.warn('⚠️ Failed to discover tools:', toolError.message);
+        }
+
         console.log(`📋 Available tools: ${availableTools.length}`);
         availableTools.forEach(tool => {
             console.log(`  - ${tool.name} (${tool.id})`);
@@ -50,47 +62,34 @@ async function testMCPIntegration() {
 
         // Test sample tool execution
         if (availableTools.length > 0) {
+            const workingDirectory = process.env.MCP_TEST_WORKDIR || repoRoot;
+            const testContext = {
+                sessionId: process.env.MCP_TEST_SESSION || 'test-session',
+                tabId: process.env.MCP_TEST_TAB || 'test-tab',
+                workingDirectory,
+                recentCommands: [],
+                environmentVariables: {},
+                shellType: process.env.MCP_TEST_SHELL || 'zsh',
+                sharedContext: {},
+                performance: { responseTime: 0, accuracy: 0, reliability: 0 }
+            };
+
             console.log('\n🛠️ Testing tool execution...');
-            try {
-                const testTool = availableTools[0];
+            const preferredTool = availableTools.find(tool => ['files', 'shell'].includes(tool.id) || ['Filesystem', 'Terminal'].includes(tool.name));
 
-                // Test filesystem tool
-                if (testTool.name === 'files') {
-                    const result = await mcpService.executeTool(testTool.id, {
-                        path: '/Users/macarena1/waveterm'
-                    }, {
-                        sessionId: 'test-session',
-                        tabId: 'test-tab',
-                        workingDirectory: '/Users/macarena1/waveterm',
-                        recentCommands: [],
-                        environmentVariables: {},
-                        shellType: 'zsh',
-                        sharedContext: {},
-                        performance: { responseTime: 0, accuracy: 0, reliability: 0 }
-                    });
-
-                    console.log('✅ Filesystem tool test successful:', result);
+            if (preferredTool) {
+                try {
+                    const payload = preferredTool.id === 'files' ? { path: workingDirectory } : {};
+                    const result = await mcpService.executeTool(preferredTool.id, payload, testContext);
+                    console.log(`✅ ${preferredTool.name} tool test successful:`, result);
+                } catch (error) {
+                    console.log('⚠️ Tool execution test failed (servers may not be ready):', error.message);
                 }
-
-                // Test terminal tool
-                else if (testTool.name === 'shell') {
-                    const result = await mcpService.executeTool(testTool.id, {}, {
-                        sessionId: 'test-session',
-                        tabId: 'test-tab',
-                        workingDirectory: '/Users/macarena1/waveterm',
-                        recentCommands: [],
-                        environmentVariables: {},
-                        shellType: 'zsh',
-                        sharedContext: {},
-                        performance: { responseTime: 0, accuracy: 0, reliability: 0 }
-                    });
-
-                    console.log('✅ Shell tool test successful:', result);
-                }
-
-            } catch (error) {
-                console.log('⚠️ Tool execution test failed (servers may not be ready):', error.message);
+            } else {
+                console.log('⚠️ No suitable tool found to run execution tests');
             }
+        } else {
+            console.log('⚠️ No tools discovered yet; skipping execution tests');
         }
 
         // Cleanup

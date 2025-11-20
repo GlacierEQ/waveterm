@@ -6,6 +6,7 @@
  */
 
 const { execSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
 
 class KubernetesChecker {
@@ -24,7 +25,11 @@ class KubernetesChecker {
             });
             return { success: true, output: output.trim() };
         } catch (error) {
-            return { success: false, error: error.message };
+            return {
+                success: false,
+                error: error.message,
+                stderr: error.stderr ? error.stderr.toString() : undefined,
+            };
         }
     }
 
@@ -88,20 +93,25 @@ class KubernetesChecker {
     checkMinikubeStatus() {
         console.log(`\n🔍 Checking Minikube status...`);
 
-        try {
-            const status = this.executeCommand('minikube status --format="{{.Host}} {{.Kubelet}} {{.APIServer}} {{.Kubeconfig}}"');
-            if (status.success) {
-                const [host, kubelet, apiServer, kubeconfig] = status.output.split(' ');
+        const status = this.executeCommand('minikube status --format="{{json .}}"');
+
+        if (status.success) {
+            try {
+                const parsed = JSON.parse(status.output);
                 console.log(`  ✅ Minikube Status:`);
-                console.log(`    Host: ${host || 'Unknown'}`);
-                console.log(`    Kubelet: ${kubelet || 'Unknown'}`);
-                console.log(`    API Server: ${apiServer || 'Unknown'}`);
-                console.log(`    Kubeconfig: ${kubeconfig || 'Unknown'}`);
-            } else {
-                console.log(`  ❌ Minikube: Not running or not installed`);
+                console.log(`    Host: ${parsed.Host || 'Unknown'}`);
+                console.log(`    Kubelet: ${parsed.Kubelet || 'Unknown'}`);
+                console.log(`    API Server: ${parsed.APIServer || 'Unknown'}`);
+                console.log(`    Kubeconfig: ${parsed.Kubeconfig || 'Unknown'}`);
+            } catch (parseError) {
+                console.log(`  ⚠️ Minikube: Failed to parse status (${parseError.message})`);
+                console.log(`    Raw output: ${status.output}`);
             }
-        } catch (error) {
-            console.log(`  ❌ Minikube: Error checking status - ${error.message}`);
+        } else {
+            console.log(`  ❌ Minikube: ${status.error || 'Not running or not installed'}`);
+            if (status.stderr) {
+                console.log(`    Details: ${status.stderr}`);
+            }
         }
     }
 
@@ -139,8 +149,8 @@ class KubernetesChecker {
         ];
 
         for (const config of configFiles) {
-            if (require('fs').existsSync(config.path)) {
-                const stats = require('fs').statSync(config.path);
+            if (fs.existsSync(config.path)) {
+                const stats = fs.statSync(config.path);
                 console.log(`  ✅ ${config.name}: ${config.path} (${stats.size} bytes)`);
             } else {
                 console.log(`  ❌ ${config.name}: ${config.path} (not found)`);

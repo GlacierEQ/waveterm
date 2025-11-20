@@ -11,3 +11,5 @@ indent_size = 4
 
 [CNAME]
 insert_final_newline = false
+
+# `tsconfig.node.tsbuildinfo` is tracked to keep incremental TypeScript builds deterministic; regenerate it with `npm run typecheck` if it becomes stale.

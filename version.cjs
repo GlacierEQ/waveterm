@@ -19,10 +19,26 @@
  */
 
 const path = require("path");
+const { execSync } = require("child_process");
 const packageJsonPath = path.resolve(__dirname, "package.json");
 const packageJson = require(packageJsonPath);
 
 const VERSION = `${packageJson.version}`;
+
+const ensureCleanGitTree = () => {
+    try {
+        execSync("git rev-parse --is-inside-work-tree", { stdio: "ignore" });
+        const status = execSync("git status --porcelain", { encoding: "utf8" }).trim();
+        if (status) {
+            throw new Error("Git working tree is dirty; commit or stash changes before bumping the version.");
+        }
+    } catch (error) {
+        if (error.message.includes("dirty")) {
+            throw error;
+        }
+        // If git isn't available, skip the check.
+    }
+};
 module.exports = VERSION;
 
 if (typeof require !== "undefined" && require.main === module) {
@@ -39,6 +55,9 @@ if (typeof require !== "undefined" && require.main === module) {
                 : action === "true" || action === "1"
                   ? true
                   : undefined;
+
+        // Ensure git tree is clean before mutating package metadata.
+        ensureCleanGitTree();
 
         // This will remove the prerelease version string (i.e. 0.1.13-beta.1 -> 0.1.13) if the arguments are `none 0` and the current version is a prerelease.
         if (action === "none" && isPrerelease === false && semver.prerelease(VERSION)) {

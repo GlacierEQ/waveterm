@@ -44,7 +44,7 @@
     "reset": "npm run clean && rimraf node_modules && npm install",
     "ai:setup": "node scripts/setup-ai-agents.js",
     "ai:dev": "concurrently \"npm run dev\" \"python3 mcp-servers/terminal-mcp.py\"",
-    "ai:build": "npm run build:prod && npm run electron:package",
+    "ai:build": "npm run build && npm run package",
     "agents:status": "node scripts/check-agent-status.js"
   },
   "keywords": [

@@ -1,5 +1,6 @@
 import { AIService, AIMessage, AIServiceConfig } from './ai-service';
 import { getApi } from '../api/api';
+import { AmazonQConfig } from '../config/amazon-q-config';
 
 export class AmazonQService implements AIService {
     private config: AIServiceConfig;
@@ -30,7 +31,12 @@ export class AmazonQService implements AIService {
 
     async streamMessage(messages: AIMessage[], onChunk: (chunk: string) => void): Promise<AIMessage> {
         try {
-            const response = await fetch(`${this.config.apiUrl}/ai/amazon-q/stream`, {
+            const baseUrl = this.config.apiUrl?.replace(/\/+$/, '') || AmazonQConfig.API_ENDPOINT;
+            if (!baseUrl) {
+                throw new Error('Amazon Q API URL is not configured');
+            }
+
+            const response = await fetch(`${baseUrl}/ai/amazon-q/stream`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -44,6 +50,11 @@ export class AmazonQService implements AIService {
                     stream: true,
                 }),
             });
+
+            if (!response.ok) {
+                const details = await response.text();
+                throw new Error(`Amazon Q stream failed (${response.status}): ${details}`);
+            }
 
             if (!response.body) {
                 throw new Error('No response body');

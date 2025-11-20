@@ -174,41 +174,6 @@ class MCPServerManager {
             });
         });
     }
-}
-
-// CLI interface
-function main() {
-    const args = process.argv.slice(2);
-    const command = args[0] || 'start';
-
-    const manager = new MCPServerManager();
-
-    switch (command) {
-        case 'start':
-            manager.startAll();
-            break;
-        case 'stop':
-            manager.stopAll();
-            break;
-        case 'health':
-            manager.checkHealth();
-            break;
-        case 'restart':
-            manager.stopAll();
-            setTimeout(() => manager.startAll(), 1000);
-            break;
-        case 'memory-test':
-            this.testMemorySystem();
-            break;
-        default:
-            console.log('Usage: node mcp-server-manager.js [start|stop|health|restart|memory-test]');
-            process.exit(1);
-    }
-}
-
-if (require.main === module) {
-    main();
-}
 
     async testMemorySystem() {
         console.log('🧪 Testing Memory System Integration...\n');
@@ -293,6 +258,43 @@ if (require.main === module) {
             req.end();
         });
     }
+}
+
+// CLI interface
+function main() {
+    const args = process.argv.slice(2);
+    const command = args[0] || 'start';
+
+    const manager = new MCPServerManager();
+
+    switch (command) {
+        case 'start':
+            manager.startAll();
+            break;
+        case 'stop':
+            manager.stopAll();
+            break;
+        case 'health':
+            manager.checkHealth();
+            break;
+        case 'restart':
+            manager.stopAll();
+            setTimeout(() => manager.startAll(), 1000);
+            break;
+        case 'memory-test':
+            manager.testMemorySystem().catch(err => {
+                console.error('❌ Memory test runner failed:', err.message);
+                process.exit(1);
+            });
+            break;
+        default:
+            console.log('Usage: node mcp-server-manager.js [start|stop|health|restart|memory-test]');
+            process.exit(1);
+    }
+}
+
+if (require.main === module) {
+    main();
 }
 
 module.exports = MCPServerManager;
